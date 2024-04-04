@@ -8,17 +8,17 @@
 
 # 0. Learn key concepts for spatial analysis and modeling
 # 1. Learn to apply a spatial exploratory methods like the Moran's I
-# 2. Learn to apply a parametric spatial regression model
+# 2. Learn to apply a parametric spatial regression model.
 
 
 #---- 1. Spatial Exploratory analysis ----
 
 #Global Moran's I
 # downloads home values and income data from ACS for 2015-2020 and calculates growth
-source("11_Lab/bexar_socioeconomic.R")
+source("bexar_socioeconomic.R")
 
-plot(bexar_medincome_20['variable'])
-plot(bexar_medincome_15['variable'],add=T,fill=NA,col='red')
+#plot(bexar_medincome_20['variable'])
+#plot(bexar_medincome_15['variable'],add=T,fill=NA,col='red')
 
 library(ggplot2)
 library(viridis)
@@ -26,16 +26,20 @@ p1<-ggplot(data = bexar_socioeconomic,aes(text=NAME.x))+
   geom_sf(aes(fill=estimate_mhv_20),color=NA)+
   scale_fill_viridis()
 
-install.packages("plotly")
+#install.packages("plotly")
 library(plotly)
 
 ggplotly(p1)
 
 #checking map validity
+library(sf)
 table(st_is_valid(bexar_socioeconomic))
 
 # if (!all(st_is_valid(bexar_socioeconomic))) bexar_socioeconomic <- st_make_valid(bexar_socioeconomic) # in case it is not valid
 
+
+library(mapview)
+mapview(bexar_socioeconomic,zcol="estimate_mhv_20")
 
 # Defining the W matrix
 install.packages("spdep")
@@ -44,7 +48,7 @@ library(spdep)
 bexar_socioeconomic<-as_Spatial(bexar_socioeconomic) # sf -> sp
 # bexar_socioeconomic <- as(bexar_socioeconomic,'sf') sp -> sf
 
-nbs<-poly2nb(bexar_socioeconomic,queen = T) # esto define vencindad
+nbs<-poly2nb(bexar_socioeconomic,queen = T) # this defines neighbors
 
 w_bexar<-nb2listw(nbs,style = "W")
 
@@ -65,7 +69,7 @@ identify(bexar_socioeconomic$estimate_mhv_20,bexar_socioeconomic$estimate_mhv_20
 
 moran.test(bexar_socioeconomic$estimate_mhv_20,listw = w_bexar)
 
-moran.plot(bexar_socioeconomic$estimate_mhv_20,listw = w_bexar,)
+moran.plot(bexar_socioeconomic$estimate_mhv_20,listw = w_bexar)
 
 # Conclusion, there is strong evidence to reject the null H0 of spatial randomness, and accept the H1 that there is a pattern of spatial clustering in the data
 
@@ -113,10 +117,10 @@ bexar<-texas_counties[texas_counties$NAME=="Bexar",]
 
 library(raster)
 #link to download red: https://www.dropbox.com/s/j8qvlrhfwz19ddh/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B4.TIF?dl=0
-red<-raster("~/Downloads/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B4.TIF") 
+red<-raster("../../04 Labs/large data/LC08_L2SP_027040_20210906_20210915_02_T1/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B4.TIF") 
 #link to download infrared: https://www.dropbox.com/s/izcco1di53c4sme/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B5.TIF?dl=0 
 
-near_infrared<-raster("~/Downloads/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B5.TIF")
+near_infrared<-raster("../../04 Labs/large data/LC08_L2SP_027040_20210906_20210915_02_T1/LC08_L2SP_027040_20210906_20210915_02_T1_SR_B5.TIF")
 
 plot(red)
 
@@ -150,7 +154,7 @@ library(ggplot2)
 library(viridis)
 library(RColorBrewer)
 
-cdistricts<-st_read("11_Lab/Council_Districts/CouncilDistricts.shp")
+cdistricts<-st_read("Council_Districts/CouncilDistricts.shp")
 
 ggplot(data = bexar_socioeconomic)+
   geom_sf(aes(fill=mean_ndvi),color=NA)+
