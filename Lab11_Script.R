@@ -15,21 +15,16 @@
 
 #Global Moran's I
 # downloads home values and income data from ACS for 2015-2020 and calculates growth
-source("bexar_socioeconomic.R")
+#source("bexar_socioeconomic.R") # use when tigris has come back
 
-#plot(bexar_medincome_20['variable'])
-#plot(bexar_medincome_15['variable'],add=T,fill=NA,col='red')
-
+bexar_socioeconomic<-qs::qread('NC_Data/nta_2_48_029_2022_2017.qs')
+bexar_socioeconomic<-st_transform(bexar_socioeconomic,crs=4326)
 library(ggplot2)
 library(viridis)
-p1<-ggplot(data = bexar_socioeconomic,aes(text=NAME.x))+
-  geom_sf(aes(fill=estimate_mhv_20),color=NA)+
+library(sf)
+p1<-ggplot(data = bexar_socioeconomic)+
+  geom_sf(aes(fill=pc_B19013_001E),color=NA)+
   scale_fill_viridis()
-
-#install.packages("plotly")
-library(plotly)
-
-ggplotly(p1)
 
 #checking map validity
 library(sf)
@@ -39,10 +34,10 @@ table(st_is_valid(bexar_socioeconomic))
 
 
 library(mapview)
-mapview(bexar_socioeconomic,zcol="estimate_mhv_20")
+mapview(bexar_socioeconomic,zcol="pc_B19013_001E")
 
 # Defining the W matrix
-install.packages("spdep")
+#install.packages("spdep")
 library(spdep)
 
 bexar_socioeconomic<-as_Spatial(bexar_socioeconomic) # sf -> sp
@@ -57,37 +52,41 @@ plot(nbs,coordinates(bexar_socioeconomic),add=T,col='blue',pch=".")
 
 names(bexar_socioeconomic@data)
 
-bexar_socioeconomic@data$estimate_mhv_20[is.na(bexar_socioeconomic@data$estimate_mhv_20)]<-0
+bexar_socioeconomic@data$pc_B19013_001E[is.na(bexar_socioeconomic@data$pc_B19013_001E)]<-0
 
-bexar_socioeconomic@data$estimate_mhv_20_lag<-lag.listw(w_bexar,bexar_socioeconomic@data$estimate_mhv_20)
+bexar_socioeconomic@data$pc_B19013_001E_lag<-lag.listw(w_bexar,bexar_socioeconomic@data$pc_B19013_001E)
 
-View(bexar_socioeconomic@data[,c("estimate_mhv_20","estimate_mhv_20_lag")])
+View(bexar_socioeconomic@data[,c("pc_B19013_001E","pc_B19013_001E_lag")])
 
-plot(bexar_socioeconomic$estimate_mhv_20,bexar_socioeconomic$estimate_mhv_20_lag)
-identify(bexar_socioeconomic$estimate_mhv_20,bexar_socioeconomic$estimate_mhv_20_lag, bexar_socioeconomic$NAME.x, cex = 0.6)
+plot(bexar_socioeconomic$pc_B19013_001E
+     ,bexar_socioeconomic$pc_B19013_001E_lag)
+identify(bexar_socioeconomic$pc_B19013_001E,bexar_socioeconomic$pc_B19013_001E_lag, bexar_socioeconomic$GEOID, cex = 0.6)
 
 
-moran.test(bexar_socioeconomic$estimate_mhv_20,listw = w_bexar)
+moran.test(bexar_socioeconomic$pc_B19013_001E,listw = w_bexar)
 
-moran.plot(bexar_socioeconomic$estimate_mhv_20,listw = w_bexar)
+moran.plot(bexar_socioeconomic$pc_B19013_001E,listw = w_bexar)
 
 # Conclusion, there is strong evidence to reject the null H0 of spatial randomness, and accept the H1 that there is a pattern of spatial clustering in the data
 
-lm(bexar_socioeconomic@data$estimate_mhv_20_lag ~ bexar_socioeconomic@data$estimate_mhv_20)
+lm(bexar_socioeconomic@data$pc_B19013_001E_lag ~ bexar_socioeconomic@data$pc_B19013_001E)
 
 # Local Moran
 
-locM<-localmoran(x = bexar_socioeconomic$estimate_mhv_20,listw = w_bexar)
+locM<-localmoran(x = bexar_socioeconomic$pc_B19013_001E,listw = w_bexar)
 summary(locM)
 
-mean_mhv20<-mean(bexar_socioeconomic@data$estimate_mhv_20)
-mean_mhv20_lag<-mean(bexar_socioeconomic@data$estimate_mhv_20_lag)
+mean_mhv20<-mean(bexar_socioeconomic@data$pc_B19013_001E)
+mean_mhv20_lag<-mean(bexar_socioeconomic@data$pc_B19013_001E_lag)
+
+abline(v=mean_mhv20,col="red")
+abline(h=mean_mhv20_lag,col="blue")
 
 bexar_socioeconomic@data$quad_sig <- 5 # not significant
-bexar_socioeconomic@data[(bexar_socioeconomic@data$estimate_mhv_20 >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag >= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 1 # High-High
-bexar_socioeconomic@data[(bexar_socioeconomic@data$estimate_mhv_20 <= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 2 # Low-Low
-bexar_socioeconomic@data[(bexar_socioeconomic@data$estimate_mhv_20 >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 3 # High-Low
-bexar_socioeconomic@data[(bexar_socioeconomic@data$estimate_mhv_20 >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 4 # Low-High
+bexar_socioeconomic@data[(bexar_socioeconomic@data$pc_B19013_001E >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag >= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 1 # High-High
+bexar_socioeconomic@data[(bexar_socioeconomic@data$pc_B19013_001E <= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 2 # Low-Low
+bexar_socioeconomic@data[(bexar_socioeconomic@data$pc_B19013_001E >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 3 # High-Low
+bexar_socioeconomic@data[(bexar_socioeconomic@data$pc_B19013_001E >= mean_mhv20 & bexar_socioeconomic@data$estimate_mhv_20_lag <= mean_mhv20_lag) & (locM[, 5] <= 0.1), "quad_sig"] <- 4 # Low-High
 
 
 # Set the breaks for the thematic map classes
@@ -171,10 +170,10 @@ library(spdep)
 install.packages("spatialreg")
 library(spatialreg)
 
-bexar_socioeconomic$estimate_mhv_20_norm<-((bexar_socioeconomic$estimate_mhv_20-mean(bexar_socioeconomic$estimate_mhv_20))/sd(bexar_socioeconomic$estimate_mhv_20))
+bexar_socioeconomic$B19013_001E_2022_norm<-((bexar_socioeconomic$B19013_001E_2022-mean(bexar_socioeconomic$B19013_001E_2022))/sd(bexar_socioeconomic$B19013_001E_2022))
 
-f1<-formula(estimate_mhv_20_norm ~ mean_ndvi)
-f2<-formula(estimate_mhv_20_norm ~ mean_ndvi + estimate_mhi_20)
+f1<-formula(B19013_001E_2022_norm ~ mean_ndvi)
+f2<-formula(B19013_001E_2022_norm ~ mean_ndvi + B25064_001E_2022)
 #OLS
 
 m0<-lm(formula = f2,data = bexar_socioeconomic)
